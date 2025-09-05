@@ -11,6 +11,7 @@ import { UserModel } from '../models/user'
 import challengeUtils = require('../lib/challengeUtils')
 import config from 'config'
 import { challenges } from '../data/datacache'
+import { LoginAttemptModel } from '../models/loginAttempt'
 
 import * as utils from '../lib/utils'
 const security = require('../lib/insecurity')
@@ -33,10 +34,15 @@ module.exports = function login () {
 
   return (req: Request, res: Response, next: NextFunction) => {
     verifyPreLoginChallenges(req) // vuln-code-snippet hide-line
-    models.sequelize.query(`SELECT * FROM Users WHERE email = '${req.body.email || ''}' AND password = '${security.hash(req.body.password || '')}' AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
+    const email = req.body.email || ''
+    const hashed = security.hash(req.body.password || '')
+    const ip = (req.headers['x-forwarded-for'] as string) || (req.headers['X-Forwarded-For'] as string) || (req.headers['true-client-ip'] as string) || req.ip
+    const userAgent = req.headers['user-agent'] as string
+    models.sequelize.query(`SELECT * FROM Users WHERE email = '${email}' AND password = '${hashed}' AND deletedAt IS NULL`, { model: UserModel, plain: true }) // vuln-code-snippet vuln-line loginAdminChallenge loginBenderChallenge loginJimChallenge
       .then((authenticatedUser) => { // vuln-code-snippet neutral-line loginAdminChallenge loginBenderChallenge loginJimChallenge
         const user = utils.queryResultToJson(authenticatedUser)
         if (user.data?.id && user.data.totpSecret !== '') {
+          void LoginAttemptModel.create({ email, success: false, reason: 'second_factor_required', ip, userAgent, UserId: user.data.id }).catch(() => {})
           res.status(401).json({
             status: 'totp_token_required',
             data: {
@@ -47,12 +53,15 @@ module.exports = function login () {
             }
           })
         } else if (user.data?.id) {
+          void LoginAttemptModel.create({ email, success: true, reason: 'ok', ip, userAgent, UserId: user.data.id }).catch(() => {})
           // @ts-expect-error FIXME some properties missing in user - vuln-code-snippet hide-line
           afterLogin(user, res, next)
         } else {
+          void LoginAttemptModel.create({ email, success: false, reason: 'invalid_credentials', ip, userAgent, UserId: null }).catch(() => {})
           res.status(401).send(res.__('Invalid email or password.'))
         }
       }).catch((error: Error) => {
+        void LoginAttemptModel.create({ email, success: false, reason: 'error', ip, userAgent, UserId: null }).catch(() => {})
         next(error)
       })
   }
