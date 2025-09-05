@@ -184,10 +184,11 @@
     "winston": "^3.3.3",
     "yaml-schema-validator": "^1.2.2",
     "z85": "^0.0.2"
-    "lodash": "4.17.15",
+     "lodash": "4.17.15",
     "express": "4.16.3",
     "debug": "2.6.8",
     "minimist": "1.2.5"
+    
     
   },
   "devDependencies": {
