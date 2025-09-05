@@ -112,7 +112,7 @@
       "text-summary"
     ]
   },
- 
+
   },
   "devDependencies": {
     "@cyclonedx/cyclonedx-npm": "^1.12.0",
