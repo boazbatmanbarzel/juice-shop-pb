@@ -16,4 +16,3 @@ module.exports = function searchProducts () {
       })
   }
 }
-//This is the file we will be using to demonstrate PR
