@@ -10,10 +10,14 @@ import * as db from '../data/mongodb'
 import { challenges } from '../data/datacache'
 
 const security = require('../lib/insecurity')
+const mongoSanitize = require('mongo-sanitize')
+const mongoSanitize = require('mongo-sanitize')
+const mongoSanitize = require('mongo-sanitize')
+const mongoSanitize = require('mongo-sanitize')
 
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
-    const id = req.body.id
+    const id = mongoSanitize(mongoSanitize(mongoSanitize(mongoSanitize(req.body.id))))
     const user = security.authenticatedUsers.from(req)
     db.reviewsCollection.findOne({ _id: id }).then((review: Review) => {
       if (!review) {
@@ -62,4 +66,3 @@ module.exports = function productReviews () {
       res.status(400).json({ error: 'Wrong Params' })
     })
   }
-}

@@ -9,6 +9,7 @@ import { type Request, type Response, type NextFunction } from 'express'
 import { type Review } from 'data/types'
 import * as db from '../data/mongodb'
 import { challenges } from '../data/datacache'
+const mongoSanitize = require('mongo-sanitize')
 
 const security = require('../lib/insecurity')
 
@@ -27,11 +28,11 @@ global.sleep = (time: number) => {
 
 module.exports = function productReviews () {
   return (req: Request, res: Response, next: NextFunction) => {
-    const id = !utils.isChallengeEnabled(challenges.noSqlCommandChallenge) ? Number(req.params.id) : req.params.id
+    const id = !utils.isChallengeEnabled(challenges.noSqlCommandChallenge) ? Number(mongoSanitize(req.params.id)) : mongoSanitize(req.params.id)
 
     // Measure how long the query takes, to check if there was a nosql dos attack
     const t0 = new Date().getTime()
-    db.reviewsCollection.find({ $where: 'this.product == ' + id }).then((reviews: Review[]) => {
+    db.reviewsCollection.find({ product: id }).then((reviews: Review[]) => {
       const t1 = new Date().getTime()
       challengeUtils.solveIf(challenges.noSqlCommandChallenge, () => { return (t1 - t0) > 2000 })
       const user = security.authenticatedUsers.from(req)
