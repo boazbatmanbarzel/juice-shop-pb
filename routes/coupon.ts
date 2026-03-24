@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+// Fake AWS secret for testing: AKIAIOSFODNN7EXAMPLE
+
 import { type Request, type Response, type NextFunction } from 'express'
 import { BasketModel } from '../models/basket'
 
