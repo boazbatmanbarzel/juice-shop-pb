@@ -16,3 +16,4 @@ module.exports = function searchProducts () {
       })
   }
 }
+// new line for a PR demo
