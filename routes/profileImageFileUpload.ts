@@ -4,6 +4,7 @@
  */
 
 import fs = require('fs')
+import path = require('path')
 import { type Request, type Response, type NextFunction } from 'express'
 import { UserModel } from '../models/user'
 import logger from '../lib/logger'
@@ -25,7 +26,10 @@ module.exports = function fileUpload () {
       if (uploadedFileType !== null && utils.startsWith(uploadedFileType.mime, 'image')) {
         const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
         if (loggedInUser) {
-          fs.open(`frontend/dist/frontend/assets/public/images/uploads/${loggedInUser.data.id}.${uploadedFileType.ext}`, 'w', function (err, fd) {
+          const safeUserId = path.basename(loggedInUser.data.id)
+          const safeExt = path.basename(uploadedFileType.ext)
+          const uploadPath = path.join('frontend', 'dist', 'frontend', 'assets', 'public', 'images', 'uploads', `${safeUserId}.${safeExt}`)
+          fs.open(uploadPath, 'w', function (err, fd) {
             if (err != null) logger.warn('Error opening file: ' + err.message)
             // @ts-expect-error FIXME buffer has unexpected type
             fs.write(fd, buffer, 0, buffer.length, null, function (err) {
@@ -35,7 +39,7 @@ module.exports = function fileUpload () {
           })
           UserModel.findByPk(loggedInUser.data.id).then(async (user: UserModel | null) => {
             if (user != null) {
-              return await user.update({ profileImage: `assets/public/images/uploads/${loggedInUser.data.id}.${uploadedFileType.ext}` })
+              return await user.update({ profileImage: path.join('assets', 'public', 'images', 'uploads', `${safeUserId}.${safeExt}`) })
             }
           }).catch((error: Error) => {
             next(error)
