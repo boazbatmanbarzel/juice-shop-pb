@@ -9,6 +9,7 @@ import yaml from 'js-yaml'
 import { getCodeChallenges } from '../lib/codingChallenges'
 import * as accuracy from '../lib/accuracy'
 import * as utils from '../lib/utils'
+import path from 'path'
 
 const challengeUtils = require('../lib/challengeUtils')
 
@@ -73,11 +74,12 @@ export const getVerdict = (vulnLines: number[], neutralLines: number[], selected
 
 exports.checkVulnLines = () => async (req: Request<Record<string, unknown>, Record<string, unknown>, VerdictRequestBody>, res: Response, next: NextFunction) => {
   const key = req.body.key
+  const sanitizedKey = path.basename(key)
   let snippetData
   try {
-    snippetData = await retrieveCodeSnippet(key)
+    snippetData = await retrieveCodeSnippet(sanitizedKey)
     if (snippetData == null) {
-      res.status(404).json({ status: 'error', error: `No code challenge for challenge key: ${key}` })
+      res.status(404).json({ status: 'error', error: `No code challenge for challenge key: ${sanitizedKey}` })
       return
     }
   } catch (error) {
@@ -90,28 +92,29 @@ exports.checkVulnLines = () => async (req: Request<Record<string, unknown>, Reco
   const selectedLines: number[] = req.body.selectedLines
   const verdict = getVerdict(vulnLines, neutralLines, selectedLines)
   let hint
-  if (fs.existsSync('./data/static/codefixes/' + key + '.info.yml')) {
-    const codingChallengeInfos = yaml.load(fs.readFileSync('./data/static/codefixes/' + key + '.info.yml', 'utf8'))
+  const infoFilePath = path.join('./data/static/codefixes', sanitizedKey + '.info.yml')
+  if (fs.existsSync(infoFilePath)) {
+    const codingChallengeInfos = yaml.load(fs.readFileSync(infoFilePath, 'utf8'))
     if (codingChallengeInfos?.hints) {
-      if (accuracy.getFindItAttempts(key) > codingChallengeInfos.hints.length) {
+      if (accuracy.getFindItAttempts(sanitizedKey) > codingChallengeInfos.hints.length) {
         if (vulnLines.length === 1) {
           hint = res.__('Line {{vulnLine}} is responsible for this vulnerability or security flaw. Select it and submit to proceed.', { vulnLine: vulnLines[0].toString() })
         } else {
           hint = res.__('Lines {{vulnLines}} are responsible for this vulnerability or security flaw. Select them and submit to proceed.', { vulnLines: vulnLines.toString() })
         }
       } else {
-        const nextHint = codingChallengeInfos.hints[accuracy.getFindItAttempts(key) - 1] // -1 prevents after first attempt
+        const nextHint = codingChallengeInfos.hints[accuracy.getFindItAttempts(sanitizedKey) - 1] // -1 prevents after first attempt
         if (nextHint) hint = res.__(nextHint)
       }
     }
   }
   if (verdict) {
-    await challengeUtils.solveFindIt(key)
+    await challengeUtils.solveFindIt(sanitizedKey)
     res.status(200).json({
       verdict: true
     })
   } else {
-    accuracy.storeFindItVerdict(key, false)
+    accuracy.storeFindItVerdict(sanitizedKey, false)
     res.status(200).json({
       verdict: false,
       hint
